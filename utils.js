@@ -7,12 +7,12 @@
 // See the GNU General Public License, version 3 or later for details.
 // Based on GNOME shell extension NASA APOD by Elia Argentieri https://github.com/Elinvention/gnome-shell-extension-nasa-apod
 
-const {Gio, GLib, Soup, GdkPixbuf} = imports.gi;
+const {Gio, GLib, GdkPixbuf} = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const Config = imports.misc.config;
 const Convenience = Me.imports.convenience;
-const Gettext = imports.gettext.domain('BingWallpaper');
+const Gettext = imports.gettext.domain('WindowsSpotlightWallpaper');
 const _ = Gettext.gettext;
 const ByteArray = imports.byteArray;
 
@@ -20,7 +20,7 @@ var PRESET_GNOME_DEFAULT = { blur: 60, dim: 55 }; // as at GNOME 40
 var PRESET_NO_BLUR = { blur: 0, dim: 60 }; 
 var PRESET_SLIGHT_BLUR = { blur: 2, dim: 60 }; 
 
-var BING_SCHEMA = 'org.gnome.shell.extensions.bingwallpaper';
+var SETTINGS_SCHEMA = 'org.gnome.shell.extensions.windows-spotlight-wallpaper';
 var DESKTOP_SCHEMA = 'org.gnome.desktop.background';
 var LOCKSCREEN_SCHEMA = 'org.gnome.desktop.screensaver';
 
@@ -31,14 +31,13 @@ var shellVersionPoint = parseInt(imports.misc.config.PACKAGE_VERSION.split('.')[
 var vertical_blur = null;
 var horizontal_blur = null;
 
-let gitreleaseurl = 'https://api.github.com/repos/neffo/bing-wallpaper-gnome-extension/releases/tags/';
 let debug = false;
 
 // remove this when dropping support for < 3.33, see https://github.com/OttoAllmendinger/
 var getActorCompat = (obj) =>
     Convenience.currentVersionGreaterEqual('3.33') ? obj : obj.actor;
 
-var icon_list = ['bing-symbolic', 'brick-symbolic', 'high-frame-symbolic', 'mid-frame-symbolic', 'low-frame-symbolic'];
+var icon_list = ['spotlight-symbolic', 'brick-symbolic', 'high-frame-symbolic', 'mid-frame-symbolic', 'low-frame-symbolic'];
 var resolutions = ['auto', 'UHD', '1920x1200', '1920x1080', '1366x768', '1280x720', '1024x768', '800x600'];
 var markets = ['auto', 'ar-XA', 'da-DK', 'de-AT', 'de-CH', 'de-DE', 'en-AU', 'en-CA', 'en-GB',
     'en-ID', 'en-IE', 'en-IN', 'en-MY', 'en-NZ', 'en-PH', 'en-SG', 'en-US', 'en-WW', 'en-XA', 'en-ZA', 'es-AR',
@@ -65,8 +64,6 @@ var backgroundStyle = ['none', 'wallpaper', 'centered', 'scaled', 'stretched', '
 var randomIntervals = [300, 3600, 86400, 604800];
 var randomIntervalsTitle = ['00:00:05:00', '00:01:00:00', '00:24:00:00', '07:00:00:00'];
 
-var BingImageURL = 'https://www.bing.com/HPImageArchive.aspx';
-var BingParams = { format: 'js', idx: '0' , n: '8' , mbl: '1' , mkt: '' } ;
 
 function validate_icon(settings, icon_image = null) {
     log('validate_icon()');
@@ -105,35 +102,6 @@ function get_current_bg(schema) {
     let gsettings = new Gio.Settings({ schema: schema });
     let cur = gsettings.get_string('picture-uri');
     return (cur);
-}
-
-function fetch_change_log(version, label, httpSession) {
-    // create an http message
-    let url = gitreleaseurl + "v" + version;
-    let request = Soup.Message.new('GET', url);
-    request.request_headers.append('Accept', 'application/json');
-    log("Fetching " + url);
-    // queue the http request
-    try {
-        if (Soup.MAJOR_VERSION >= 3) {
-            httpSession.send_and_read_async(request, GLib.PRIORITY_DEFAULT, null, (httpSession, message) => {
-                let data = ByteArray.toString(httpSession.send_and_read_finish(message).get_data());
-                let text = JSON.parse(data).body;
-                label.set_label(text);
-            });
-        }
-        else {
-            httpSession.queue_message(request, (httpSession, message) => {
-                let data = message.response_body.data;
-                let text = JSON.parse(data).body;
-                label.set_label(text);
-            });
-        }
-    } 
-    catch (error) {
-        log("Error fetching change log: " + error);
-        label.set_label(_("Error fetching change log: "+error));
-    }
 }
 
 function set_blur_preset(settings, preset) {
@@ -188,18 +156,18 @@ function dateFromShortDate(shortdate) {
 }
 
 function getImageList(settings) {
-    return JSON.parse(settings.get_string('bing-json'));
+    return JSON.parse(settings.get_string('spotlight-json')).filter(image => image.source === 'spotlight');
 }
 
 function setImageList(settings, imageList) {
-    settings.set_string('bing-json', JSON.stringify(imageList));
-    if (settings.get_boolean('always-export-bing-json')) { // save copy of current JSON
-        exportBingJSON(settings);
+    settings.set_string('spotlight-json', JSON.stringify(imageList));
+    if (settings.get_boolean('always-export-spotlight-json')) { // save copy of current JSON
+        exportSpotlightJSON(settings);
     }
 }
 
 function getImageTitle(image_data) {
-    return image_data.copyright.replace(/\s*\(.*?\)\s*/g, '');
+    return image_data.title || 'Windows Spotlight';
 }
 
 function getImageUrlBase(image_data) {
@@ -225,7 +193,7 @@ function setImageFavouriteStatus(settings, imageURL, newState) {
     let imageList = getImageList(settings);
     imageList.forEach(function(x, i) {
         //log('testing: '+imageURL+' includes '+x.urlbase);
-        if (imageURL.includes(x.urlbase)) {
+        if (imageURL === x.url || imageURL.includes(x.urlbase)) {
             log('setting index '+i+' to '+newState?'true':'false');
             imageList[i].favourite = newState;
         }
@@ -265,7 +233,11 @@ function mergeImageLists(settings, imageList) {
     let curList = getImageList(settings);
     let newList = []; // list of only new images (for future notifications)
     imageList.forEach(function(x, i) {
-        if (!inImageList(curList, x.urlbase)) {// if not in the list, add it
+        let existing = inImageList(curList, x.urlbase);
+        if (existing) {
+            // Keep the cached filename and favourite while refreshing CDN metadata.
+            Object.assign(existing, x, {startdate: existing.startdate});
+        } else {
             curList.unshift(x); // use unshift to maintain reverse chronological order
             newList.unshift(x); 
         }
@@ -308,24 +280,24 @@ function cleanupImageList(settings) {
 
 function getWallpaperDir(settings) {
     let homeDir =  GLib.get_home_dir(); 
-    let BingWallpaperDir = settings.get_string('download-folder').replace('~', homeDir); 
+    let wallpaperDir = settings.get_string('download-folder').replace('~', homeDir);
     let userPicturesDir = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES);
     let userDesktopDir = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP); // seems to be a safer default
-    if (BingWallpaperDir == '') {
-        BingWallpaperDir = (userPicturesDir?userPicturesDir:userDesktopDir) + '/BingWallpaper/';
-        log('Using default download folder: ' + BingWallpaperDir);
-        setWallpaperDir(settings, BingWallpaperDir);
+    if (wallpaperDir == '') {
+        wallpaperDir = (userPicturesDir?userPicturesDir:userDesktopDir) + '/WindowsSpotlightWallpaper/';
+        log('Using default download folder: ' + wallpaperDir);
+        setWallpaperDir(settings, wallpaperDir);
     }
-    else if (!BingWallpaperDir.endsWith('/')) {
-        BingWallpaperDir += '/';
+    else if (!wallpaperDir.endsWith('/')) {
+        wallpaperDir += '/';
     }
 
-    let dir = Gio.file_new_for_path(BingWallpaperDir);
+    let dir = Gio.file_new_for_path(wallpaperDir);
     if (!dir.query_exists(null)) {
         dir.make_directory_with_parents(null);
     }
     //FIXME: test if dir is good and writable
-    return BingWallpaperDir;
+    return wallpaperDir;
 }
 
 function setWallpaperDir(settings, uri) {
@@ -381,6 +353,8 @@ function friendly_time_diff(time, short = true) {
 }
 
 function getResolution(settings, image) {
+    if (image && image.source === 'spotlight')
+        return 'original';
     let resolution = settings.get_string('resolution');
     if (resolutions.indexOf(resolution) == -1 || (image ? image.wp == false : true) || // wp == false when background is animated
 		settings.get_string('resolution') == 'auto' ) {
@@ -411,7 +385,7 @@ function shortenName(string, limit) {
 
 function moveImagesToNewFolder(settings, oldPath, newPath) {
     // possible race condition here, need to think about how to fix it
-    //let BingWallpaperDir = settings.get_string('download-folder');
+    //let wallpaperDir = settings.get_string('download-folder');
     let dir = Gio.file_new_for_path(oldPath);
     let dirIter = dir.enumerate_children('', Gio.FileQueryInfoFlags.NONE, null );
     let newDir = Gio.file_new_for_path(newPath);
@@ -460,7 +434,7 @@ function moveBackground(oldPath, newPath, schema) {
 
 function log(msg) {
     if (debug)
-        print("BingWallpaper extension: " + msg); // disable to keep the noise down in journal
+        print("WindowsSpotlightWallpaper extension: " + msg); // disable to keep the noise down in journal
 }
 
 function deleteImage(to_delete) {
@@ -510,23 +484,23 @@ function openInSystemViewer(filename, is_file = true) {
     Gio.AppInfo.launch_default_for_uri(filename, context);
 }
 
-function exportBingJSON(settings) {
-    let json = settings.get_string('bing-json');
-    let filepath = getWallpaperDir(settings) + 'bing.json';
+function exportSpotlightJSON(settings) {
+    let json = settings.get_string('spotlight-json');
+    let filepath = getWallpaperDir(settings) + 'spotlight.json';
     let file = Gio.file_new_for_path(filepath);
     let [success, error] = file.replace_contents(json, null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
     if (!success) {
-        log('error saving bing-json from '+filepath+': '+error);
+        log('error saving spotlight-json from '+filepath+': '+error);
     }
 }
 
-function importBingJSON(settings) {
-    let filepath = getWallpaperDir(settings) + 'bing.json';
+function importSpotlightJSON(settings) {
+    let filepath = getWallpaperDir(settings) + 'spotlight.json';
     let file = Gio.file_new_for_path(filepath);
     if (file.query_exists(null)) {
         let [success, contents, etag_out] = file.load_contents(null);
         if (!success) {
-            log('error loading bing-json '+filepath+' - '+etag_out);
+            log('error loading spotlight-json '+filepath+' - '+etag_out);
         }
         else {
             log('JSON import success');
@@ -540,4 +514,4 @@ function importBingJSON(settings) {
         log('JSON import file not found');
     }
 }
-  
+

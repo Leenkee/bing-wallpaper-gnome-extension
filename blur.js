@@ -39,7 +39,7 @@ var promptActive = false;   // default GNOME method of testing this relies on st
 
 function log(msg) {
     if (debug) // set 'debug' above to false to keep the noise down in journal
-        print("BingWallpaper extension/Blur: " + msg); 
+        print("WindowsSpotlightWallpaper extension/Blur: " + msg);
 }
 
 // we patch UnlockDialog._updateBackgroundEffects()
@@ -89,7 +89,7 @@ function _showPrompt_BWP() {
 var Blur = class Blur {
     constructor() {
         this.enabled = false;
-        log('Bing Wallpaper adjustable blur is '+supportedVersion()?'available':'not available');
+        log('Windows Spotlight Wallpaper adjustable blur is '+supportedVersion()?'available':'not available');
     }
 
     set_blur_strength(value) {

@@ -7,18 +7,16 @@
 // See the GNU General Public License, version 3 or later for details.
 // Based on GNOME shell extension NASA APOD by Elia Argentieri https://github.com/Elinvention/gnome-shell-extension-nasa-apod
 
-imports.gi.versions.Soup = "2.4"; // force single version of Soup, not sure if there is a way to force latest version
-
-const {Gtk, Gdk, GdkPixbuf, Gio, GLib, Soup} = imports.gi;
+const {Gtk, Gdk, GdkPixbuf, Gio, GLib} = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Utils = Me.imports.utils;
 const Convenience = Me.imports.convenience;
-const Gettext = imports.gettext.domain('BingWallpaper');
+const Gettext = imports.gettext.domain('WindowsSpotlightWallpaper');
 const _ = Gettext.gettext;
 const Carousel = Me.imports.carousel;
 
-const BingImageURL = Utils.BingImageURL;
+
 
 var DESKTOP_SCHEMA = 'org.gnome.desktop.background';
 
@@ -26,23 +24,22 @@ var PREFS_DEFAULT_WIDTH = 650;
 var PREFS_DEFAULT_HEIGHT = 650;
 
 function init() {
-    ExtensionUtils.initTranslations("BingWallpaper"); // this is now included in ExtensionUtils
+    ExtensionUtils.initTranslations("WindowsSpotlightWallpaper"); // this is now included in ExtensionUtils
 }
 
 function buildPrefsWidget() {
     // formally globals
-    let settings = ExtensionUtils.getSettings(Utils.BING_SCHEMA);
+    let settings = ExtensionUtils.getSettings(Utils.SETTINGS_SCHEMA);
     let desktop_settings = ExtensionUtils.getSettings(Utils.DESKTOP_SCHEMA);
 
     let icon_image = null;
     let provider = new Gtk.CssProvider();
 
     let carousel = null;
-    let httpSession = null;
 
     let log = (msg) => { // avoids need for globals
         if (settings.get_boolean('debug-logging'))
-            print("BingWallpaper extension: " + msg); // disable to keep the noise down in journal
+            print("WindowsSpotlightWallpaper extension: " + msg); // disable to keep the noise down in journal
     }
 
     // Prepare labels and controls
@@ -106,14 +103,6 @@ function buildPrefsWidget() {
     let searchBuffer = buildable.get_object('searchBuffer');*/
     let carouselFlowBox = (Gtk.get_major_version() == 4) ? buildable.get_object('carouselFlowBox'): null;
     
-    try {
-        httpSession = new Soup.Session();
-        httpSession.user_agent = 'User-Agent: Mozilla/5.0 (X11; GNOME Shell/' + imports.misc.config.PACKAGE_VERSION + '; Linux x86_64; +https://github.com/neffo/bing-wallpaper-gnome-extension ) BingWallpaper Gnome Extension/' + Me.metadata.version;
-    }
-    catch (e) {
-        log("Error creating httpSession: " + e);
-    }
-
     // check that these are valid (can be edited through dconf-editor)
     Utils.validate_resolution(settings);
     Utils.validate_icon(settings, icon_image);
@@ -140,7 +129,7 @@ function buildPrefsWidget() {
     settings.bind('revert-to-current-image', revertSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
     settings.bind('override-unsafe-wayland', unsafeSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
     settings.bind('random-interval', randomIntervalEntry, 'value', Gio.SettingsBindFlags.DEFAULT);
-    settings.bind('always-export-bing-json', switchAlwaysExport, 'active', Gio.SettingsBindFlags.DEFAULT);
+    settings.bind('always-export-spotlight-json', switchAlwaysExport, 'active', Gio.SettingsBindFlags.DEFAULT);
 
     // button opens Nautilus at our image folder
     folderOpenBtn.connect('clicked', (widget) => {
@@ -162,10 +151,10 @@ function buildPrefsWidget() {
     // this is intended for migrating image folders between computers (or even sharing) or backups
     // we export the Bing JSON data to the image directory, so this folder becomes portable
     buttonImportData.connect('clicked', () => {
-        Utils.importBingJSON(settings);
+        Utils.importSpotlightJSON(settings);
     });
     buttonExportData.connect('clicked', () => {
-        Utils.exportBingJSON(settings);
+        Utils.exportSpotlightJSON(settings);
     });
 
     //download folder
@@ -216,7 +205,7 @@ function buildPrefsWidget() {
         fileChooserBtn.set_filename(Utils.getWallpaperDir(settings));
         log("fileChooser filename/dirname set to '"+fileChooserBtn.get_filename()+"' setting is '"+settings.get_string('download-folder')+"'");
         
-        fileChooserBtn.add_shortcut_folder_uri("file://" + GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES)+"/BingWallpaper");
+        fileChooserBtn.add_shortcut_folder_uri("file://" + GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES)+"/WindowsSpotlightWallpaper");
         fileChooserBtn.connect('file-set', (widget) => {      
             Utils.moveImagesToNewFolder(settings, settings.get_string('download-folder'), widget.get_filename());
             Utils.setWallpaperDir(settings, widget.get_filename());
@@ -233,6 +222,9 @@ function buildPrefsWidget() {
         });
     }
 
+    // Spotlight supplies the original image, without Bing resolution variants.
+    resolutionEntry.set_sensitive(false);
+    resolutionEntry.set_tooltip_text('Windows Spotlight uses the original image resolution.');
     // Resolution
     Utils.resolutions.forEach((res) => { // add res to dropdown list (aka a GtkComboText)
         resolutionEntry.append(res, res);
@@ -287,9 +279,7 @@ function buildPrefsWidget() {
     if (Gtk.get_major_version() < 4)
         box.show_all();
 
-    // fetch
-    if (httpSession)
-        Utils.fetch_change_log(Me.metadata.version.toString(), change_log, httpSession);
+    change_log.set_label(Me.metadata.description);
 
     return box;
 }

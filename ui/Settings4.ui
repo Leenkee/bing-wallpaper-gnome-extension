@@ -21,7 +21,7 @@ along with this extension.  If not, see <http://www.gnu.org/licenses/>.
 Bing Wallpaper GNOME extension by: Michael Carroll
 
 -->
-<interface domain="BingWallpaper">
+<interface domain="WindowsSpotlightWallpaper">
   <requires lib="gtk" version="4.0"/>
   <object class="GtkAdjustment" id="adjustment_blur">
     <property name="upper">50</property>
@@ -45,7 +45,7 @@ Bing Wallpaper GNOME extension by: Michael Carroll
     <property name="page_increment">3600</property>
   </object>
   <object class="GtkFileChooserNative" id="file_chooser">
-    <property name="title" translatable="yes">Bing Wallpaper pictures folder</property>
+    <property name="title" translatable="yes">Windows Spotlight Wallpaper pictures folder</property>
     <property name="select-multiple">0</property>
     <property name="action">select-folder</property>
     <property name="modal">1</property>
@@ -155,7 +155,7 @@ Bing Wallpaper GNOME extension by: Michael Carroll
                                 <property name="can_focus">0</property>
                                 <property name="halign">end</property>
                                 <property name="hexpand">1</property>
-                                <property name="file">../icons/bing-symbolic.svg</property>
+                                <property name="file">../icons/spotlight-symbolic.svg</property>
                                 <property name="css_classes">icon_image_black_bg</property>
                                 <layout>
                                   <property name="column">1</property>
@@ -314,7 +314,7 @@ Bing Wallpaper GNOME extension by: Michael Carroll
                                 <property name="can_focus">False</property>
                                 <property name="halign">end</property>
                                 <property name="hexpand">True</property>
-                                <property name="label" translatable="yes">Bing Wallpaper pictures folder</property>
+                                <property name="label" translatable="yes">Windows Spotlight Wallpaper pictures folder</property>
                                 <layout>
                                   <property name="column">1</property>
                                   <property name="row">0</property>
@@ -465,7 +465,7 @@ Bing Wallpaper GNOME extension by: Michael Carroll
                                 <property name="can_focus">0</property>
                                 <property name="halign">start</property>
                                 <property name="hexpand">1</property>
-                                <property name="label" translatable="yes">Bing locale</property>
+                                <property name="label" translatable="yes">Spotlight locale</property>
                                 <property name="wrap">1</property>
                                 <layout>
                                   <property name="column">0</property>
@@ -1072,7 +1072,7 @@ Bing Wallpaper GNOME extension by: Michael Carroll
                                 <property name="can_focus">0</property>
                                 <property name="halign">start</property>
                                 <property name="hexpand">1</property>
-                                <property name="label" translatable="yes">Import Bing Wallpaper data</property>
+                                <property name="label" translatable="yes">Import Windows Spotlight Wallpaper data</property>
                                 <property name="wrap">1</property>
                                 <layout>
                                   <property name="column">0</property>
@@ -1127,7 +1127,7 @@ Bing Wallpaper GNOME extension by: Michael Carroll
                                 <property name="can_focus">0</property>
                                 <property name="halign">start</property>
                                 <property name="hexpand">1</property>
-                                <property name="label" translatable="yes">Export Bing Wallpaper data</property>
+                                <property name="label" translatable="yes">Export Windows Spotlight Wallpaper data</property>
                                 <property name="wrap">1</property>
                                 <layout>
                                   <property name="column">0</property>
@@ -1182,7 +1182,7 @@ Bing Wallpaper GNOME extension by: Michael Carroll
                                 <property name="can_focus">0</property>
                                 <property name="halign">start</property>
                                 <property name="hexpand">1</property>
-                                <property name="label" translatable="yes">Always export Bing data</property>
+                                <property name="label" translatable="yes">Always export Spotlight data</property>
                                 <property name="wrap">1</property>
                                 <layout>
                                   <property name="column">0</property>
@@ -1195,7 +1195,7 @@ Bing Wallpaper GNOME extension by: Michael Carroll
                                 <property name="can_focus">0</property>
                                 <property name="halign">start</property>
                                 <property name="hexpand">1</property>
-                                <property name="label" translatable="yes">Export Bing JSON whenever data changes</property>
+                                <property name="label" translatable="yes">Export Spotlight JSON whenever data changes</property>
                                 
                                 <style>
                                   <class name="dim-label"/>
@@ -1300,13 +1300,13 @@ Bing Wallpaper GNOME extension by: Michael Carroll
             <!-- <child>
               <object class="GtkImage" id="logo">
                 <property name="can_focus">0</property>
-                <property name="file">../icons/bing-symbolic.svg</property>
+                <property name="file">../icons/spotlight-symbolic.svg</property>
               </object>
             </child> -->
             <child>
               <object class="GtkLabel" id="extension_name">
                 <property name="can_focus">0</property>
-                <property name="label">Bing Wallpaper</property>
+                <property name="label">Windows Spotlight Wallpaper</property>
                 <attributes>
                   <attribute name="weight" value="bold"></attribute>
                 </attributes>
@@ -1315,7 +1315,7 @@ Bing Wallpaper GNOME extension by: Michael Carroll
             <child>
               <object class="GtkLabel" id="extension_description">
                 <property name="can_focus">0</property>
-                <property name="label" translatable="yes">New wallpaper images everyday from Bing</property>
+                <property name="label" translatable="yes">Windows Spotlight wallpapers, updated every four hours</property>
                 <property name="justify">center</property>
                 <property name="wrap">1</property>
               </object>
@@ -1343,7 +1343,7 @@ Bing Wallpaper GNOME extension by: Michael Carroll
             </child>
             <child>
               <object class="GtkLinkButton" id="homepage_link">
-                <property name="label" translatable="no">https://github.com/neffo/bing-wallpaper-gnome-extension</property>
+                <property name="label" translatable="no">Upstream: Bing Wallpaper</property>
                 <property name="can_focus">0</property>
                 <property name="receives_default">1</property>
                 <property name="halign">center</property>
@@ -1359,13 +1359,13 @@ Bing Wallpaper GNOME extension by: Michael Carroll
                 <child>
                   <object class="GtkLabel" id="maintainer_label">
                     <property name="can_focus">0</property>
-                    <property name="label" translatable="yes">Maintained by Michael Carroll</property>
+                    <property name="label" translatable="yes">Based on Bing Wallpaper by Michael Carroll</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkLabel" id="email_label">
                     <property name="can_focus">0</property>
-                    <property name="label">ineffable@gmail.com</property>
+                    <property name="label">Original author: ineffable@gmail.com</property>
                     <property name="use_markup">1</property>
                   </object>
                 </child>
@@ -1373,7 +1373,7 @@ Bing Wallpaper GNOME extension by: Michael Carroll
                   <object class="GtkLabel">
                     <property name="can_focus">0</property>
                     <property name="margin-start">36</property>
-                    <property name="label" translatable="yes">Show your support to the author on &lt;a href=&quot;https://flattr.com/@neffo&quot;&gt;Flattr&lt;/a&gt; or &lt;a href=&quot;https://github.com/sponsors/neffo&quot;&gt;Github Sponsors&lt;/a&gt;.</property>
+                    <property name="label" translatable="yes">Support the original Bing Wallpaper author on &lt;a href=&quot;https://flattr.com/@neffo&quot;&gt;Flattr&lt;/a&gt; or &lt;a href=&quot;https://github.com/sponsors/neffo&quot;&gt;Github Sponsors&lt;/a&gt;.</property>
                     <property name="use_markup">1</property>
                   </object>
                 </child>

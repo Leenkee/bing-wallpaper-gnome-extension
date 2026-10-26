@@ -11,7 +11,7 @@ const { Gtk, Gdk, GdkPixbuf, Gio, GLib } = imports.gi;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const Utils = Me.imports.utils;
 
-const Gettext = imports.gettext.domain('BingWallpaper');
+const Gettext = imports.gettext.domain('WindowsSpotlightWallpaper');
 const _ = Gettext.gettext;
 const default_dimensions = [30, 30, 1650, 800]; // TODO: pull from and save dimensions to settings, but perhaps verify that dimensions are ok
 
@@ -32,7 +32,7 @@ var Carousel = class Carousel {
         this.log('create carousel...');
 
         if (!prefs_flowbox) {    
-            [this.window, this.flowBox] = this._create_gallery_window(_('Bing Wallpaper Gallery'), default_dimensions);
+            [this.window, this.flowBox] = this._create_gallery_window(_('Windows Spotlight Wallpaper Gallery'), default_dimensions);
             if (Gtk.get_major_version() < 4)
                 this.window.show_all();
             else
@@ -293,6 +293,6 @@ var Carousel = class Carousel {
 
     log(msg) {
         if (this.settings.get_boolean('debug-logging'))
-            print("BingWallpaper extension: " + msg); // disable to keep the noise down in journal
+            print("WindowsSpotlightWallpaper extension: " + msg); // disable to keep the noise down in journal
     }
 };

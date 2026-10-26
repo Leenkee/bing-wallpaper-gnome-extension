@@ -1,7 +1,7 @@
-<schemalist gettext-domain="gnome-shell-extensions">
+<schemalist gettext-domain="WindowsSpotlightWallpaper">
 
-  <schema id="org.gnome.shell.extensions.bingwallpaper"
-      path="/org/gnome/shell/extensions/bingwallpaper/">
+  <schema id="org.gnome.shell.extensions.windows-spotlight-wallpaper"
+      path="/org/gnome/shell/extensions/windows-spotlight-wallpaper/">
 
     <key name="hide" type="b">
       <default>false</default>
@@ -30,13 +30,13 @@
     <key name="set-background" type="b">
       <default>true</default>
         <summary>Set background</summary>
-        <description>Set background to Bing's background</description>
+        <description>Set background to Spotlight's background</description>
     </key>
 
     <key name="set-lock-screen" type="b">
       <default>false</default>
         <summary>Set lock screen</summary>
-        <description>Set lock screen to Bing's background</description>
+        <description>Set lock screen to Spotlight's background</description>
     </key>
 
     <key name="download-folder" type="s">
@@ -47,7 +47,7 @@
 
     <key name="market" type="s">
       <default>"auto"</default>
-      <summary>Default Market for Bing</summary>
+      <summary>Default Market for Spotlight</summary>
       <description></description>
     </key>
 
@@ -77,19 +77,19 @@
 
     <key name="replace-watermark" type="s">
       <default>""</default>
-      <summary>Replace or remove Bing watermark on high-res images</summary>
+      <summary>Replace or remove Spotlight watermark on high-res images</summary>
       <description>Set to "none", "Gnome" or "Ubuntu"</description>
     </key>
 
      <key name="icon-name" type="s">
-      <default>"bing-symbolic"</default>
+      <default>"spotlight-symbolic"</default>
       <summary>Icon Name</summary>
       <description>Icon filename to use for extension applet</description>
     </key>
 
     <key name="override-wp-flag" type="b">
       <default>false</default>
-      <summary>Ignore Bing permitted for use as wallpaper flag</summary>
+      <summary>Ignore Spotlight permitted for use as wallpaper flag</summary>
       <description>Used when wallpaper is animated, or not licensed for wallpaper use</description>
     </key>
 
@@ -115,7 +115,7 @@
 
     <key name="selected-image" type="s">
       <default>"current"</default>
-      <summary>Use older Bing image, select by filename</summary>
+      <summary>Use older Spotlight image, select by filename</summary>
       <description></description>
     </key>
 
@@ -131,9 +131,9 @@
       <description></description>
     </key>
 
-    <key name="bing-json" type="s">
+    <key name="spotlight-json" type="s">
       <default>"[]"</default>
-      <summary>Store Bing image details for rollback</summary>
+      <summary>Store Spotlight image details for rollback</summary>
       <description></description>
     </key>
 
@@ -162,9 +162,9 @@
       <description>Speeds up subsequent loads, but requires some additional disk space</description>
     </key>
 
-    <key name="always-export-bing-json" type="b">
+    <key name="always-export-spotlight-json" type="b">
       <default>false</default>
-      <summary>Save backup copy of Bing JSON to wallpaper directory</summary>
+      <summary>Save backup copy of Spotlight JSON to wallpaper directory</summary>
       <description>Enables migration to new install or restoration from back up</description>
     </key>
 

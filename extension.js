@@ -22,12 +22,12 @@ const Blur = Me.imports.blur;
 const Thumbnail = Me.imports.thumbnail;
 const BWClipboard = Me.imports.BWClipboard;
 const Convenience = Me.imports.convenience;
-const Gettext = imports.gettext.domain('BingWallpaper');
+const Gettext = imports.gettext.domain('WindowsSpotlightWallpaper');
 const _ = Gettext.gettext;
 
-const BingImageURL = Utils.BingImageURL;
-const BingURL = 'https://www.bing.com';
-const IndicatorName = 'BingWallpaperIndicator';
+const Spotlight = Me.imports.spotlight;
+
+const IndicatorName = 'WindowsSpotlightWallpaperIndicator';
 const TIMEOUT_SECONDS = 24 * 3600; // FIXME: this should use the end data from the json data
 const TIMEOUT_SECONDS_ON_HTTP_ERROR = 1 * 3600; // retry in one hour if there is a http error
 const ICON_PREVIOUS_BUTTON = 'media-seek-backward-symbolic';
@@ -43,7 +43,7 @@ const ICON_RANDOM = Me.dir.get_child('icons').get_path() + '/'+'game-die-symboli
 const ICON_FAVE_BUTTON = Me.dir.get_child('icons').get_path() + '/'+'fav-symbolic.svg';
 const ICON_UNFAVE_BUTTON = Me.dir.get_child('icons').get_path() + '/'+'unfav-symbolic.svg';
 
-let bingWallpaperIndicator = null;
+let spotlightWallpaperIndicator = null;
 let blur = null;
 
 // remove this when dropping support for < 3.33, see https://github.com/OttoAllmendinger/
@@ -65,12 +65,12 @@ const newMenuSwitchItem = (label, state) => {
 }
 
 function log(msg) {
-    if (bingWallpaperIndicator && bingWallpaperIndicator._settings.get_boolean('debug-logging'))
-        print('BingWallpaper extension: ' + msg); // disable to keep the noise down in journal
+    if (spotlightWallpaperIndicator && spotlightWallpaperIndicator._settings.get_boolean('debug-logging'))
+        print('WindowsSpotlightWallpaper extension: ' + msg); // disable to keep the noise down in journal
 }
 
 function notifyError(msg) {
-    Main.notifyError("BingWallpaper extension error", msg);
+    Main.notifyError("WindowsSpotlightWallpaper extension error", msg);
 }
 
 function doSetBackground(uri, schema) {
@@ -89,8 +89,8 @@ function doSetBackground(uri, schema) {
     return (prev != uri); // return true if background uri has changed
 }
 
-const BingWallpaperIndicator = GObject.registerClass(
-class BingWallpaperIndicator extends PanelMenu.Button {
+const WindowsSpotlightWallpaperIndicator = GObject.registerClass(
+class WindowsSpotlightWallpaperIndicator extends PanelMenu.Button {
     _init(params = {}) {
         super._init(0, IndicatorName, false);
 
@@ -124,7 +124,7 @@ class BingWallpaperIndicator extends PanelMenu.Button {
         */
 
         // take a variety of actions when the gsettings values are modified by prefs
-        this._settings = ExtensionUtils.getSettings(Utils.BING_SCHEMA);
+        this._settings = ExtensionUtils.getSettings(Utils.SETTINGS_SCHEMA);
 
         this._initSoup();
 
@@ -147,7 +147,7 @@ class BingWallpaperIndicator extends PanelMenu.Button {
         this.refreshItem = newMenuItem(_("Refresh Now"));
         this.settingsItem = newMenuItem(_("Settings"));
         this.openImageItem = newMenuItem(_("Open in image viewer"));
-        this.openImageInfoLinkItem = newMenuItem(_("Open Bing image information page"));
+        this.openImageInfoLinkItem = newMenuItem(_("Open Spotlight image information page"));
 
         [this.openImageInfoLinkItem, this.openImageItem, this.folderItem,
             this.clipboardImageItem, this.clipboardURLItem, this.dwallpaperItem]
@@ -207,14 +207,14 @@ class BingWallpaperIndicator extends PanelMenu.Button {
             this._reStoreState();
         }
         else {
-            this._restartTimeout(60); // wait 60 seconds before performing refresh
+            this._restartTimeout(5); // fetch Spotlight shortly after startup
         }
     }
 
     // create soup Session
     _initSoup() {
         this.httpSession = new Soup.Session();
-        this.httpSession.user_agent = 'User-Agent: Mozilla/5.0 (X11; GNOME Shell/' + imports.misc.config.PACKAGE_VERSION + '; Linux x86_64; +https://github.com/neffo/bing-wallpaper-gnome-extension ) BingWallpaper Gnome Extension/' + Me.metadata.version;
+        this.httpSession.user_agent = Spotlight.USER_AGENT;
     }
 
     // listen for configuration changes
@@ -232,8 +232,8 @@ class BingWallpaperIndicator extends PanelMenu.Button {
             {signal: 'changed::selected-image', call: this._setImage},
             {signal: 'changed::delete-previous', call: this._cleanUpImages},
             {signal: 'changed::notify', call: this._notifyCurrentImage},
-            {signal: 'changed::always-export-bing-json', call: this._exportData},
-            {signal: 'changed::bing-json', call: this._exportData},
+            {signal: 'changed::always-export-spotlight-json', call: this._exportData},
+            {signal: 'changed::spotlight-json', call: this._exportData},
             {signal: 'changed::controls-icon-size', call: this._setControls}
         ];
 
@@ -429,7 +429,7 @@ class BingWallpaperIndicator extends PanelMenu.Button {
         this.titleItem.label.set_text(this.title ? this.title : '');  
         this.copyrightItem.label.set_text(this.copyright ? this.copyright : '');
         if (this._settings.get_boolean('show-count-in-image-title') && this.explanation) {
-            let imageList = JSON.parse(this._settings.get_string('bing-json'));
+            let imageList = JSON.parse(this._settings.get_string('spotlight-json'));
             if (imageList.length > 0)
                 this.explainItem.label.set_text( this.explanation + ' [' + (this.imageIndex + 1) + '/' + imageList.length + ']');
         }
@@ -621,58 +621,46 @@ class BingWallpaperIndicator extends PanelMenu.Button {
         this._updatePending = true;
         this._restartTimeout();
         
-        let market = this._settings.get_string('market');
-        if (Soup.MAJOR_VERSION >= 3) {
-            let url = BingImageURL;
-            let params = Utils.BingParams;
-            params['mkt'] = ( market != 'auto' ? market : '' );
+        this._requestSpotlight(false);
+    }
 
-            let request = Soup.Message.new_from_encoded_form('GET', url, Soup.form_encode_hash(params));
-            request.request_headers.append('Accept', 'application/json');
-
+    _requestSpotlight(fallback) {
+        const request = Soup.Message.new('GET', Spotlight.requestUrl(this._settings.get_string('market'), fallback));
+        const headers = Soup.MAJOR_VERSION >= 3 ? request.get_request_headers() : request.request_headers;
+        headers.append('Accept', 'application/json');
+        const complete = (session, result) => {
             try {
-                this.httpSession.send_and_read_async(request, GLib.PRIORITY_DEFAULT, null, (httpSession, message) => {
-                    this._processMessageRefresh(message);
-                });
+                const data = Soup.MAJOR_VERSION >= 3 ?
+                    ByteArray.toString(session.send_and_read_finish(result).get_data()) : result.response_body.data;
+                const status = Soup.MAJOR_VERSION >= 3 ? request.get_status() : request.status_code;
+                if (status !== 200)
+                    throw new Error('Spotlight HTTP ' + status);
+                const parsed = JSON.parse(data);
+                if (!Spotlight.hasItems(parsed) && !fallback) {
+                    this._requestSpotlight(true);
+                    return;
+                }
+                this._parseData(Spotlight.parse(parsed));
+                if (this.selected_image != 'random')
+                    this._selectImage();
+            } catch (error) {
+                this._refreshFailed(error);
             }
-            catch(error) {
-                log('unable to send libsoup json message '+error);
-            }
-        }
-        else {
-            let url = BingImageURL + '?format=js&idx=0&n=8&mbl=1&mkt=' + (market != 'auto' ? market : '');
-            let request = Soup.Message.new('GET', url);
-            request.request_headers.append('Accept', 'application/json');
-
-            // queue the http request
-            try {
-                this.httpSession.queue_message(request, (httpSession, message) => {
-                    this._processMessageRefresh(message);
-                });
-            }
-            catch (error) {
-                log('unable to send libsoup json message '+error);
-            }
+        };
+        try {
+            if (Soup.MAJOR_VERSION >= 3)
+                this.httpSession.send_and_read_async(request, GLib.PRIORITY_DEFAULT, null, complete);
+            else
+                this.httpSession.queue_message(request, complete);
+        } catch (error) {
+            this._refreshFailed(error);
         }
     }
 
-    _processMessageRefresh(message) {
-        try {
-            let data = (Soup.MAJOR_VERSION >= 3) ? 
-                ByteArray.toString(this.httpSession.send_and_read_finish(message).get_data()): // Soup3
-                message.response_body.data; // Soup 2
-            
-            log('Recieved ' + data.length + ' bytes');
-            this._parseData(data);
-            
-            if (this.selected_image != 'random')
-                this._selectImage();
-        }
-        catch (error) {
-            log('Network error occured: ' + error);
-            this._updatePending = false;
-            this._restartTimeout(TIMEOUT_SECONDS_ON_HTTP_ERROR);
-        }
+    _refreshFailed(error) {
+        log('Spotlight refresh failed: ' + error);
+        this._updatePending = false;
+        this._restartTimeout(TIMEOUT_SECONDS_ON_HTTP_ERROR);
     }
 
     // sets a timer for next refresh of Bing metadata
@@ -702,22 +690,16 @@ class BingWallpaperIndicator extends PanelMenu.Button {
 
     // auto export Bing data to JSON file if requested
     _exportData() {
-        if (this._settings.get_boolean('always-export-bing-json')) { // save copy of current JSON
-            Utils.exportBingJSON(this._settings);
+        if (this._settings.get_boolean('always-export-spotlight-json')) { // save copy of current JSON
+            Utils.exportSpotlightJSON(this._settings);
         }
     }
 
     // process Bing metadata
     _parseData(data) {
         try {
-            let parsed = JSON.parse(data);
-            let datamarket = parsed.market.mkt;
-            let prefmarket = this._settings.get_string('market');
-            let newImages = Utils.mergeImageLists(this._settings, parsed.images);
-            
-            if (datamarket != prefmarket && prefmarket != 'auto')
-                log('WARNING: Bing returning market data for ' + datamarket + ' rather than selected ' + prefmarket);
-            
+            let newImages = Utils.mergeImageLists(this._settings, data);
+
             Utils.purgeImages(this._settings); // delete older images if enabled
             Utils.cleanupImageList(this._settings);
             
@@ -744,11 +726,11 @@ class BingWallpaperIndicator extends PanelMenu.Button {
                 }
             }
 
-            this._restartTimeoutFromLongDate(parsed.images[0].fullstartdate); // timing is set by Bing, and possibly varies by market
+            this._restartTimeout(Spotlight.REFRESH_SECONDS);
             this._updatePending = false;
         }
         catch (error) {
-            log('_parseData() failed with error ' + error);
+            this._refreshFailed(error);
         }
     }
 
@@ -760,9 +742,9 @@ class BingWallpaperIndicator extends PanelMenu.Button {
 
     _createNotification(image) {
         // set notifications icon
-        let source = new MessageTray.Source('Bing Wallpaper', 'preferences-desktop-wallpaper-symbolic');
+        let source = new MessageTray.Source('Windows Spotlight Wallpaper', 'preferences-desktop-wallpaper-symbolic');
         Main.messageTray.add(source);
-        let msg = _('Bing Wallpaper of the Day for') + ' ' + this._localeDate(image.fullstartdate);
+        let msg = _('Windows Spotlight wallpaper for') + ' ' + this._localeDate(image.fullstartdate);
         let details = Utils.getImageTitle(image);
         let notification = new MessageTray.Notification(source, msg, details);
         notification.setTransient(this._settings.get_boolean('transient'));
@@ -790,10 +772,10 @@ class BingWallpaperIndicator extends PanelMenu.Button {
             this.imageIndex = Utils.getCurrentImageIndex(imageList);
         } else {
             image = Utils.inImageList(imageList, this.selected_image);
-            log('_selectImage: ' + this.selected_image + ' = ' + image ? image.urlbase : 'not found');
+            log('_selectImage: ' + this.selected_image + ' = ' + (image ? image.urlbase : 'not found'));
             if (!image) // if we didn't find it, try for current
                 image = Utils.getCurrentImage(imageList);
-            this.imageIndex = Utils.imageIndex(imageList, image.urlbase);
+            this.imageIndex = image ? Utils.imageIndex(imageList, image.urlbase) : -1;
         }
 
         if (!image)
@@ -801,16 +783,16 @@ class BingWallpaperIndicator extends PanelMenu.Button {
 
         if (image.url != '') {
             let resolution = Utils.getResolution(this._settings, image);
-            let BingWallpaperDir = Utils.getWallpaperDir(this._settings);
+            let wallpaperDir = Utils.getWallpaperDir(this._settings);
 
             // set current image details at extension scope
-            this.title = image.copyright.replace(/\s*[\(\（].*?[\)\）]\s*/g, '');
-            this.explanation = _('Bing Wallpaper of the Day for') + ' ' + this._localeDate(image.startdate);
-            this.copyright = image.copyright.match(/[\(\（]([^)]+)[\)\）]/)[1].replace('\*\*', ''); // Japan locale uses （） rather than ()
+            this.title = Utils.getImageTitle(image);
+            this.explanation = _('Windows Spotlight wallpaper for') + ' ' + this._localeDate(image.startdate);
+            this.copyright = image.copyright;
             this.longstartdate = image.fullstartdate;
             this.imageinfolink = image.copyrightlink.replace(/^http:\/\//i, 'https://');
-            this.imageURL = BingURL + image.urlbase + '_' + resolution + '.jpg'; // generate image url for user's resolution
-            this.filename = toFilename(BingWallpaperDir, image.startdate, image.urlbase, resolution);
+            this.imageURL = image.url;
+            this.filename = toFilename(wallpaperDir, image.startdate, image.urlbase, resolution);
 
             if (("favourite" in image) && image.favourite === true ) {
                 this.favourite_status = true;
@@ -824,7 +806,7 @@ class BingWallpaperIndicator extends PanelMenu.Button {
             let file_info = file_exists ? file.query_info ('*', Gio.FileQueryInfoFlags.NONE, null) : 0;
 
             if (!file_exists || file_info.get_size () == 0) { // file doesn't exist or is empty (probably due to a network error)
-                let dir = Gio.file_new_for_path(BingWallpaperDir);
+                let dir = Gio.file_new_for_path(wallpaperDir);
                 if (!dir.query_exists(null)) {
                     dir.make_directory_with_parents(null);
                 }
@@ -849,7 +831,7 @@ class BingWallpaperIndicator extends PanelMenu.Button {
     _storeState() {
         if (this.filename) {
             let maxLongDate = Utils.getMaxLongDate(this._settings); // refresh date from most recent Bing image
-            let state = {maxlongdate: maxLongDate, title: this.title, explanation: this.explanation, copyright: this.copyright,
+            let state = {source: 'spotlight', maxlongdate: maxLongDate, title: this.title, explanation: this.explanation, copyright: this.copyright,
                 longstartdate: this.longstartdate, imageinfolink: this.imageinfolink, imageURL: this.imageURL,
                 filename: this.filename, favourite: this.favourite_status};
             let stateJSON = JSON.stringify(state);
@@ -865,6 +847,10 @@ class BingWallpaperIndicator extends PanelMenu.Button {
             this._settings.set_string('download-folder', this._settings.get_string('download-folder').replace('$HOME', '~'));
             let stateJSON = this._settings.get_string('state');
             let state = JSON.parse(stateJSON);
+            if (state.source !== 'spotlight') {
+                this._restartTimeout(5);
+                return;
+            }
             let maxLongDate = null;
             
             log('restoring state...');
@@ -894,10 +880,10 @@ class BingWallpaperIndicator extends PanelMenu.Button {
             
             if (this.selected_image == 'random') {
                 this._shuffleImage();
-                this._restartTimeoutFromLongDate(maxLongDate);
+                this._restartTimeout(5);
             }
             else {
-                this._restartTimeoutFromLongDate(maxLongDate);
+                this._restartTimeout(5);
             }
 
             return;
@@ -991,18 +977,18 @@ class BingWallpaperIndicator extends PanelMenu.Button {
 });
 
 function init(extensionMeta) {
-    ExtensionUtils.initTranslations("BingWallpaper");
+    ExtensionUtils.initTranslations("WindowsSpotlightWallpaper");
 }
 
 function enable() {
-    bingWallpaperIndicator = new BingWallpaperIndicator();
-    Main.panel.addToStatusArea(IndicatorName, bingWallpaperIndicator);
+    spotlightWallpaperIndicator = new WindowsSpotlightWallpaperIndicator();
+    Main.panel.addToStatusArea(IndicatorName, spotlightWallpaperIndicator);
 }
 
 function disable() { 
-    bingWallpaperIndicator.stop();
-    bingWallpaperIndicator.destroy();
-    bingWallpaperIndicator = null;
+    spotlightWallpaperIndicator.stop();
+    spotlightWallpaperIndicator.destroy();
+    spotlightWallpaperIndicator = null;
 
     // *** NOTE for EGO reviewers ***
     // blur.js remains active during lockscreen, while the rest of the extension is disabled

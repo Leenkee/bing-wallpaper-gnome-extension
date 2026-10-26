@@ -1,10 +1,13 @@
 {
-  "name": "Bing Wallpaper",
-  "description": "Bing Wallpaper eslint check",
+  "name": "windows-spotlight-wallpaper",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Windows Spotlight Wallpaper GNOME Shell extension",
   "devDependencies": {
     "eslint": "^5.16.0"
   },
   "scripts": {
-    "lint": "eslint *.js"
+    "lint": "eslint *.js",
+    "test": "gjs test-spotlight.js && glib-compile-schemas --strict schemas && gjs test-identity.js"
   }
 }
